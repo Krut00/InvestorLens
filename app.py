@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from flask import Flask, jsonify, make_response, render_template, request
@@ -14,6 +15,10 @@ def create_app() -> Flask:
     @app.get("/")
     def index():
         return render_template("index.html")
+
+    @app.get("/health")
+    def health():
+        return jsonify({"status": "ok"})
 
     @app.get("/api/company/<ticker>")
     def company(ticker: str):
@@ -51,4 +56,4 @@ app = create_app()
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5051, debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5051")), debug=True)

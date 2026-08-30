@@ -13,6 +13,15 @@ python app.py
 
 Open `http://127.0.0.1:5051` and enter an NSE ticker such as `TCS`, `INFY`, or `HDFCBANK`.
 
+## Deploy on Render
+
+1. Push this repository to GitHub.
+2. In Render, choose **New > Blueprint** and connect the repository.
+3. Select `render.yaml` and create the `investorlens` web service.
+4. After deployment, confirm that `/health` returns `{"status":"ok"}`.
+
+Render installs dependencies and starts the app with Gunicorn using the platform-provided `PORT`. The free service has an ephemeral filesystem, so the local Screener response cache may be cleared whenever the service restarts.
+
 ## Verification model
 
 - Data is fetched server-side from the company's consolidated Screener page.
@@ -37,7 +46,7 @@ This is decision support, not investment advice or a return prediction.
 
 ## Screener usage boundary
 
-Screener's published terms permit personal, non-commercial transitory viewing and restrict copying, public display, redistribution, and commercial use. This project is configured as a local academic tool and attributes/link-backs every source observation. Do not publicly deploy, redistribute cached data, or use commercially without written permission from Screener/Mittal Analytics. Review the current terms before each deployment decision: https://www.screener.in/guides/terms/
+Screener's published terms permit personal, non-commercial transitory viewing and restrict copying, public display, redistribution, and commercial use. This project is configured as an academic tool and attributes/link-backs every source observation. Do not make a Render deployment public, redistribute cached data, or use it commercially without written permission from Screener/Mittal Analytics. Review the current terms before each deployment decision: https://www.screener.in/guides/terms/
 
 ## Tests
 
