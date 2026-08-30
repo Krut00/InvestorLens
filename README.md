@@ -20,7 +20,7 @@ Open `http://127.0.0.1:5051` and enter an NSE ticker such as `TCS`, `INFY`, or `
 3. Select `render.yaml` and create the `investorlens` web service.
 4. After deployment, confirm that `/health` returns `{"status":"ok"}`.
 
-Render installs dependencies and starts the app with Gunicorn using the platform-provided `PORT`. The free service has an ephemeral filesystem, so the local Screener response cache may be cleared whenever the service restarts.
+Render installs dependencies and starts the app with Gunicorn using the platform-provided `PORT`. The worker count is intentionally conservative for the free instance's memory limit. The free service also has an ephemeral filesystem, so the local Screener response cache may be cleared whenever the service restarts and the service may need time to wake after inactivity.
 
 ## Verification model
 
