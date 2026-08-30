@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>InvestorLens | Screener-sourced fundamentals</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#overview" aria-label="InvestorLens home">
+      <span class="brand-mark">IL</span>
+      <span>InvestorLens</span>
+    </a>
+    <div class="search-shell">
+      <form id="search-form" class="search" role="search">
+        <label class="sr-only" for="ticker">Company name or NSE ticker</label>
+        <input id="ticker" name="ticker" value="TCS" maxlength="80" autocomplete="off" placeholder="Company name or ticker" role="combobox" aria-autocomplete="list" aria-controls="company-suggestions" aria-expanded="false">
+        <button type="submit" title="Analyse company" aria-label="Analyse company">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
+        </button>
+      </form>
+      <ul id="company-suggestions" class="autocomplete" role="listbox" hidden></ul>
+    </div>
+    <button id="refresh" class="icon-button" title="Refresh from Screener" aria-label="Refresh from Screener">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"></path><path d="M20 4v7h-7"></path></svg>
+    </button>
+  </header>
+
+  <nav class="section-nav" aria-label="Dashboard views">
+    <button class="nav-tab active" data-view="dashboard">Dashboard</button>
+    <button class="nav-tab" data-view="insights">Business Insights</button>
+    <button class="nav-tab" data-view="comparison">Compare Companies</button>
+    <button class="nav-tab" data-view="audit">Source audit <span id="audit-count"></span></button>
+  </nav>
+
+  <main>
+    <div id="loading" class="state-panel"><span class="loader"></span>Fetching current Screener data...</div>
+    <div id="error" class="state-panel error" hidden></div>
+
+    <div id="dashboard" class="view" hidden>
+      <section id="overview" class="overview-band">
+        <div class="company-heading">
+          <div>
+            <p class="eyebrow">Accounting-based investment view</p>
+            <h1 id="company-name">Company</h1>
+            <p class="source-line"><span id="fetched-at"></span> · Consolidated figures · <a id="source-link" target="_blank" rel="noopener">Open on Screener ↗</a></p>
+          </div>
+          <div class="market-strip" id="market-strip"></div>
+        </div>
+        <div class="overview-grid">
+          <div class="score-block">
+            <div id="score-ring" class="score-ring"><strong id="total-score">--</strong><span>/100</span></div>
+            <div><p id="decision" class="decision">Loading</p><p class="muted">Rules-based fundamental score</p></div>
+          </div>
+          <div class="signal-block"><h2>Strengths</h2><ul id="strengths" class="signal-list positive-list"></ul></div>
+          <div class="signal-block"><h2>Risks to inspect</h2><ul id="risks" class="signal-list risk-list"></ul></div>
+        </div>
+      </section>
+
+      <section class="content-section">
+        <div class="section-title"><div><p class="eyebrow">Score architecture</p><h2>Eight-module assessment</h2></div><p id="score-note" class="section-note"></p></div>
+        <div id="modules" class="module-grid"></div>
+      </section>
+
+      <section class="content-section split-section">
+        <div>
+          <div class="section-title"><div><p class="eyebrow">Five-year direction</p><h2>Statements in motion</h2></div></div>
+          <div id="trend-chart" class="chart-panel" aria-label="Financial trend chart"></div>
+          <div id="chart-legend" class="chart-legend"></div>
+        </div>
+        <div>
+          <div class="section-title"><div><p class="eyebrow">Operating vs bottom line</p><h2>Where performance changes</h2></div></div>
+          <div id="operating-metrics" class="metric-list"></div>
+          <p id="operating-insight" class="insight"></p>
+        </div>
+      </section>
+
+      <section class="content-section analysis-grid">
+        <article class="analysis-panel dupont-panel">
+          <p class="eyebrow">Three-step DuPont</p><h2>Source of return on equity</h2>
+          <div class="formula"><div><strong id="dupont-npm">--</strong><span>Net margin</span></div><b>×</b><div><strong id="dupont-turnover">--</strong><span>Asset turnover</span></div><b>×</b><div><strong id="dupont-leverage">--</strong><span>Equity multiplier</span></div></div>
+          <p id="dupont-insight" class="insight"></p>
+        </article>
+        <article class="analysis-panel"><p class="eyebrow">Earnings quality</p><h2>Cash-backed profit</h2><div id="cash-metrics" class="metric-list compact"></div><p id="cash-insight" class="insight"></p></article>
+        <article class="analysis-panel"><p class="eyebrow">Capital structure</p><h2>Leverage quality</h2><div id="leverage-metrics" class="metric-list compact"></div><p id="leverage-insight" class="insight"></p></article>
+        <article class="analysis-panel"><p class="eyebrow">Investor perception</p><h2>Valuation context</h2><div id="valuation-metrics" class="metric-list compact"></div><p id="valuation-insight" class="insight"></p></article>
+      </section>
+
+      <section class="content-section">
+        <div class="section-title"><div><p class="eyebrow">Accounting signals</p><h2>Red-flag engine</h2></div><p class="section-note">Flags indicate investigation, never wrongdoing.</p></div>
+        <div id="red-flags" class="flag-list"></div>
+      </section>
+
+      <footer class="disclaimer">For personal, non-commercial academic use. Data is fetched from and attributed to Screener.in; verify against the linked source before relying on it. This model is not investment advice and does not predict returns.</footer>
+    </div>
+
+    <div id="insights" class="view" hidden>
+      <section class="insights-hero">
+        <div class="insights-heading">
+          <p class="eyebrow">Fundamental research brief</p>
+          <h1 id="insights-company">Business Insights</h1>
+          <p>Evidence-led interpretation of growth, returns, cash quality, financial resilience, valuation, and thesis risk.</p>
+        </div>
+        <div class="insights-tools">
+          <a id="download-report" class="report-button" href="#" download>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>
+            Download analyst report
+          </a>
+          <div class="research-stamp"><span>Model confidence</span><strong id="insights-confidence">--</strong><small>Financial evidence only</small></div>
+        </div>
+      </section>
+
+      <section class="verdict-band">
+        <div><p class="eyebrow">Investor stance</p><h2 id="insights-stance">--</h2><p id="insights-action"></p></div>
+        <div class="wait-card"><span>Suggested review window</span><strong id="insights-wait">--</strong></div>
+      </section>
+
+      <section class="research-section executive-section">
+        <div class="research-kicker"><span>01</span><div><p class="eyebrow">Executive readout</p><h2>What the reported numbers say</h2></div></div>
+        <div id="insights-summary" class="executive-grid"></div>
+      </section>
+
+      <section class="research-section">
+        <div class="research-kicker"><span>02</span><div><p class="eyebrow">Analytical pillars</p><h2>Business quality under the lens</h2></div></div>
+        <div id="insights-dimensions" class="dimension-grid"></div>
+      </section>
+
+      <section class="research-section industry-section">
+        <div class="research-kicker"><span>03</span><div><p class="eyebrow">Sector context</p><h2>Company vs industry peers</h2></div></div>
+        <div class="industry-heading"><div><span>Industry classification</span><strong id="insights-industry-name">--</strong><small id="insights-industry-sample"></small></div><a id="insights-industry-link" target="_blank" rel="noopener">View industry on Screener ↗</a></div>
+        <div id="insights-industry-grid" class="benchmark-grid"></div>
+        <p id="insights-industry-method" class="benchmark-method"></p>
+      </section>
+
+      <section class="research-section thesis-section">
+        <div class="research-kicker"><span>04</span><div><p class="eyebrow">Investment debate</p><h2>The case for and against</h2></div></div>
+        <div class="thesis-grid">
+          <article class="thesis-panel choose"><div class="thesis-label">Why an investor may choose it</div><ul id="insights-choose"></ul></article>
+          <article class="thesis-panel avoid"><div class="thesis-label">Why an investor may defer or avoid</div><ul id="insights-avoid"></ul></article>
+        </div>
+      </section>
+
+      <section class="research-section monitor-section">
+        <div class="research-kicker"><span>05</span><div><p class="eyebrow">Decision framework</p><h2>What must happen next</h2></div></div>
+        <div class="monitor-grid">
+          <article><h3>Confirmation triggers</h3><p>Evidence that would strengthen the case.</p><ol id="insights-confirm"></ol></article>
+          <article class="warning-monitor"><h3>Thesis-break warnings</h3><p>Evidence that should prompt reassessment.</p><ol id="insights-invalidate"></ol></article>
+        </div>
+      </section>
+
+      <section class="research-section gaps-section">
+        <div class="research-kicker"><span>06</span><div><p class="eyebrow">Analyst checklist</p><h2>Evidence still required</h2></div></div>
+        <div id="insights-gaps" class="gaps-list"></div>
+      </section>
+      <footer id="insights-disclaimer" class="disclaimer"></footer>
+    </div>
+
+    <div id="comparison" class="view" hidden>
+      <section class="comparison-hero">
+        <p class="eyebrow">Side-by-side research</p><h1>Compare two companies</h1>
+        <p>Compare valuation, returns, growth, cash quality, leverage, and fundamental scores using Screener-backed data.</p>
+        <form id="comparison-form" class="comparison-form">
+          <label>Company A<input id="compare-left" value="TCS" maxlength="80" placeholder="Name or ticker"></label>
+          <span>vs</span>
+          <label>Company B<input id="compare-right" value="INFY" maxlength="80" placeholder="Name or ticker"></label>
+          <button type="submit">Compare</button>
+        </form>
+      </section>
+      <div id="comparison-loading" class="comparison-status" hidden><span class="loader"></span>Fetching both companies...</div>
+      <div id="comparison-error" class="comparison-status error" hidden></div>
+      <div id="comparison-results" hidden>
+        <section id="comparison-summary" class="comparison-summary"></section>
+        <section class="comparison-section"><div class="section-title"><div><p class="eyebrow">Decision metrics</p><h2>Where each company leads</h2></div><p class="section-note">Values within 5% are treated as similar.</p></div><div class="comparison-table-wrap"><table><thead><tr><th>Metric</th><th id="comparison-left-heading">Company A</th><th id="comparison-right-heading">Company B</th><th>Readout</th></tr></thead><tbody id="comparison-metrics"></tbody></table></div></section>
+        <section class="comparison-section"><div class="section-title"><div><p class="eyebrow">Score architecture</p><h2>Module comparison</h2></div></div><div id="comparison-modules" class="comparison-modules"></div></section>
+        <footer class="disclaimer">Comparisons are descriptive, not investment advice. Different sectors, accounting policies, cycles, and reporting periods can limit comparability.</footer>
+      </div>
+    </div>
+
+    <div id="audit" class="view" hidden>
+      <section class="audit-header">
+        <div><p class="eyebrow">Source comparison</p><h1>Fetched data vs Screener</h1><p>Every normalized input is shown beside the exact text captured from the public company page.</p></div>
+        <a id="audit-source-link" class="source-button" target="_blank" rel="noopener">Open source page ↗</a>
+      </section>
+      <div class="audit-summary"><strong id="verified-count">0 / 0</strong><span>values reproducibly parsed</span><span id="audit-time"></span></div>
+      <div class="table-wrap"><table><thead><tr><th>Metric</th><th>Period</th><th>Normalized</th><th>Screener displayed</th><th>Status</th></tr></thead><tbody id="audit-body"></tbody></table></div>
+      <footer class="disclaimer">A “matched” status confirms parsing consistency, not the underlying financial data’s independent accuracy.</footer>
+    </div>
+  </main>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

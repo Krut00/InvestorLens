@@ -1,0 +1,9 @@
+[project]
+name = "investorlens-screener"
+version = "0.1.0"
+description = "Accounting-based investor dashboard sourced from Screener.in"
+requires-python = ">=3.9"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
