@@ -17,7 +17,7 @@ BASE_URL = "https://www.screener.in/company/{ticker}/consolidated/"
 SEARCH_URL = "https://www.screener.in/api/company/search/"
 PEERS_URL = "https://www.screener.in/api/company/{warehouse_id}/peers/"
 TICKER_PATTERN = re.compile(r"^[A-Z0-9&.-]{1,24}$")
-CACHE_SCHEMA_VERSION = 2
+CACHE_SCHEMA_VERSION = 3
 
 
 class ScreenerError(RuntimeError):
@@ -229,7 +229,7 @@ def extract_period_peer(data: Dict[str, object], ticker: str, period: str, is_su
 
 
 class ScreenerClient:
-    def __init__(self, cache_dir: Path, cache_seconds: int = 900) -> None:
+    def __init__(self, cache_dir: Path, cache_seconds: int = 60) -> None:
         self.cache_dir = cache_dir
         self.cache_seconds = cache_seconds
         self.cache_dir.mkdir(parents=True, exist_ok=True)

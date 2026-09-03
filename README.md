@@ -25,7 +25,7 @@ Render installs dependencies and starts the app with Gunicorn using the platform
 ## Verification model
 
 - Data is fetched server-side from the company's consolidated Screener page.
-- Responses are cached locally for 15 minutes to avoid unnecessary requests.
+- Responses are cached locally for 60 seconds to keep current market fields timely while avoiding duplicate requests.
 - Every observation stores its numeric value, exact displayed text, unit, section, source URL, and fetch timestamp.
 - The Source audit view compares normalized values with Screener's displayed values and links to the relevant page section.
 - Incomplete or changed page structures are rejected instead of silently returning partial, unverified data.
