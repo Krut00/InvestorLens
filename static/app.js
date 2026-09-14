@@ -117,6 +117,18 @@ function renderComparison(left,right){
 async function comparisonCompany(query,signal){const search=await fetch(`/api/companies?q=${encodeURIComponent(query)}`,{signal}),matches=await search.json();const ticker=(matches.find(x=>x.ticker===query.toUpperCase())||matches[0])?.ticker||query.toUpperCase();const response=await fetch(`/api/company/${encodeURIComponent(ticker)}`,{signal}),data=await response.json();if(!response.ok)throw new Error(data.error||`Unable to load ${query}.`);return{ticker,data};}
 async function compareCompanies(){state.comparisonController?.abort();const controller=new AbortController();state.comparisonController=controller;$("comparison-loading").hidden=false;$("comparison-error").hidden=true;$("comparison-results").hidden=true;try{const [left,right]=await Promise.all([comparisonCompany($("compare-left").value.trim(),controller.signal),comparisonCompany($("compare-right").value.trim(),controller.signal)]);if(left.ticker===right.ticker)throw new Error("Choose two different companies.");$("compare-left").value=left.ticker;$("compare-right").value=right.ticker;renderComparison(left.data,right.data);}catch(error){if(error.name!=="AbortError"){$("comparison-error").textContent=error.message;$("comparison-error").hidden=false;}}finally{if(state.comparisonController===controller)$("comparison-loading").hidden=true;}}
 
+function setupComparisonAutocomplete(inputId,listId) {
+  const input=$(inputId), list=$(listId);
+  let matches=[], active=-1, timer, controller;
+  const close=()=>{matches=[];active=-1;list.hidden=true;list.replaceChildren();input.setAttribute("aria-expanded","false");input.removeAttribute("aria-activedescendant");};
+  const activate=index=>{if(!matches.length)return;active=(index+matches.length)%matches.length;list.querySelectorAll(".autocomplete-option").forEach((option,optionIndex)=>{const selected=optionIndex===active;option.classList.toggle("active",selected);option.setAttribute("aria-selected",String(selected));});const option=list.children[active];input.setAttribute("aria-activedescendant",option.id);option.scrollIntoView({block:"nearest"});};
+  const select=index=>{const match=matches[index];if(!match)return;input.value=match.ticker;input.dataset.ticker=match.ticker;close();};
+  const render=items=>{matches=items;active=-1;list.replaceChildren();items.forEach((match,index)=>{const option=document.createElement("li");option.id=`${listId}-option-${index}`;option.className="autocomplete-option";option.role="option";const name=document.createElement("span");name.textContent=match.name;const ticker=document.createElement("strong");ticker.textContent=match.ticker;option.append(name,ticker);option.addEventListener("mousedown",event=>{event.preventDefault();select(index);});list.append(option);});list.hidden=!items.length;input.setAttribute("aria-expanded",String(Boolean(items.length)));};
+  input.addEventListener("input",()=>{delete input.dataset.ticker;clearTimeout(timer);controller?.abort();close();const query=input.value.trim();if(query.length<2)return;timer=setTimeout(async()=>{controller=new AbortController();try{const response=await fetch(`/api/companies?q=${encodeURIComponent(query)}`,{signal:controller.signal});const items=await response.json();if(response.ok&&input.value.trim()===query)render(items);}catch(error){if(error.name!=="AbortError")close();}},220);});
+  input.addEventListener("keydown",event=>{if(event.key==="ArrowDown"&&matches.length){event.preventDefault();activate(active+1);}else if(event.key==="ArrowUp"&&matches.length){event.preventDefault();activate(active<0?matches.length-1:active-1);}else if(event.key==="Enter"&&matches.length){event.preventDefault();select(active<0?0:active);}else if(event.key==="Escape")close();});
+  input.addEventListener("blur",()=>setTimeout(close,100));
+}
+
 function switchView(view) { document.querySelectorAll(".view").forEach(el=>el.hidden=el.id!==view); document.querySelectorAll(".nav-tab").forEach(tab=>tab.classList.toggle("active",tab.dataset.view===view)); window.scrollTo({top:0}); }
 
 function closeSuggestions() {
@@ -166,6 +178,8 @@ $("ticker").addEventListener("keydown",event=>{
 });
 document.addEventListener("click",event=>{ if(!event.target.closest(".search-shell")) closeSuggestions(); });
 document.querySelectorAll(".nav-tab").forEach(tab=>tab.addEventListener("click",()=>state.data&&switchView(tab.dataset.view)));
+setupComparisonAutocomplete("compare-left","compare-left-suggestions");
+setupComparisonAutocomplete("compare-right","compare-right-suggestions");
 $("comparison-form").addEventListener("submit",event=>{event.preventDefault();compareCompanies();});
 $("search-form").addEventListener("submit",async event=>{
   event.preventDefault(); clearTimeout(searchTimer); state.searchController?.abort();

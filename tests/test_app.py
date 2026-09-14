@@ -17,6 +17,8 @@ def test_index_and_cached_company_api():
     index = test_client.get("/").get_data(as_text=True)
     assert "Compare Companies" in index
     assert 'id="comparison-form"' in index
+    assert 'aria-controls="compare-left-suggestions"' in index
+    assert 'aria-controls="compare-right-suggestions"' in index
 
 
 def test_invalid_ticker_is_rejected():

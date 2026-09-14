@@ -164,9 +164,9 @@
         <p class="eyebrow">Side-by-side research</p><h1>Compare two companies</h1>
         <p>Compare valuation, returns, growth, cash quality, leverage, and fundamental scores using Screener-backed data.</p>
         <form id="comparison-form" class="comparison-form">
-          <label>Company A<input id="compare-left" value="TCS" maxlength="80" placeholder="Name or ticker"></label>
+          <label class="comparison-field">Company A<input id="compare-left" value="TCS" maxlength="80" autocomplete="off" placeholder="Name or ticker" role="combobox" aria-autocomplete="list" aria-controls="compare-left-suggestions" aria-expanded="false"><ul id="compare-left-suggestions" class="autocomplete" role="listbox" hidden></ul></label>
           <span>vs</span>
-          <label>Company B<input id="compare-right" value="INFY" maxlength="80" placeholder="Name or ticker"></label>
+          <label class="comparison-field">Company B<input id="compare-right" value="INFY" maxlength="80" autocomplete="off" placeholder="Name or ticker" role="combobox" aria-autocomplete="list" aria-controls="compare-right-suggestions" aria-expanded="false"><ul id="compare-right-suggestions" class="autocomplete" role="listbox" hidden></ul></label>
           <button type="submit">Compare</button>
         </form>
       </section>
