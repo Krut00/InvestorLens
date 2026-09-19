@@ -2,6 +2,12 @@ const state = { data: null, ticker: "TCS", suggestions: [], activeSuggestion: -1
 const $ = (id) => document.getElementById(id);
 const fmt = (value, suffix = "", digits = 1) => value == null ? "—" : `${Number(value).toFixed(digits)}${suffix}`;
 const metricRow = (label, value) => `<div class="metric-row"><span>${label}</span><strong>${value}</strong></div>`;
+async function responseJson(response, fallback) {
+  let data;
+  try { data=await response.json(); } catch { throw new Error(fallback); }
+  if(!response.ok) throw new Error(data?.error||fallback);
+  return data;
+}
 
 async function loadCompany(ticker, refresh = false) {
   state.companyController?.abort();
@@ -13,8 +19,7 @@ async function loadCompany(ticker, refresh = false) {
     let data=!refresh&&state.companyCache.get(ticker.toUpperCase());
     if(!data){
       const response = await fetch(`/api/company/${encodeURIComponent(ticker)}${refresh ? "?refresh=1" : ""}`,{signal:controller.signal});
-      data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Unable to load company data.");
+      data = await responseJson(response,"Unable to load company data. Please try again.");
       state.companyCache.set(ticker.toUpperCase(),data);
     }
     state.data = data; state.ticker = ticker.toUpperCase(); render(data); switchView("dashboard");
@@ -122,7 +127,7 @@ function renderComparison(left,right){
   $("comparison-metrics").innerHTML=comparisonMetrics.map(([label,get,unit,digits,higher])=>{const a=get(left),b=get(right),[side,text]=metricLeader(a,b,higher,left.company,right.company);return`<tr><td><strong>${label}</strong><small>${higher?"Higher":"Lower"} is generally favorable</small></td><td class="${side==="left"?"leader":""}">${fmt(a,unit,digits)}</td><td class="${side==="right"?"leader":""}">${fmt(b,unit,digits)}</td><td><span class="comparison-result ${side}">${text}</span></td></tr>`;}).join("");
   const rightModules=new Map(right.analysis.modules.map(m=>[m.name,m]));$("comparison-modules").innerHTML=left.analysis.modules.map(a=>{const b=rightModules.get(a.name);return`<article><div><strong>${a.name}</strong><span>${a.score}/${a.max} · ${b?.score??"—"}/${b?.max??a.max}</span></div><progress max="${a.max}" value="${a.score}"></progress><progress max="${b?.max??a.max}" value="${b?.score??0}"></progress><small>${left.company} / ${right.company}</small></article>`;}).join("");$("comparison-results").hidden=false;
 }
-async function comparisonCompany(query,signal){const search=await fetch(`/api/companies?q=${encodeURIComponent(query)}`,{signal}),matches=await search.json();const ticker=(matches.find(x=>x.ticker===query.toUpperCase())||matches[0])?.ticker;if(!ticker)throw new Error(`No company found for “${query}”.`);const cached=state.companyCache.get(ticker);if(cached)return{ticker,data:cached};const response=await fetch(`/api/company/${encodeURIComponent(ticker)}`,{signal}),data=await response.json();if(!response.ok)throw new Error(data.error||`Unable to load ${query}.`);state.companyCache.set(ticker,data);return{ticker,data};}
+async function comparisonCompany(query,signal){const search=await fetch(`/api/companies?q=${encodeURIComponent(query)}`,{signal}),matches=await responseJson(search,"Company search is temporarily unavailable.");const ticker=(matches.find(x=>x.ticker===query.toUpperCase())||matches[0])?.ticker;if(!ticker)throw new Error(`No company found for “${query}”.`);const cached=state.companyCache.get(ticker);if(cached)return{ticker,data:cached};const response=await fetch(`/api/company/${encodeURIComponent(ticker)}`,{signal}),data=await responseJson(response,`Unable to load ${query}. Please try again.`);state.companyCache.set(ticker,data);return{ticker,data};}
 async function compareCompanies(){state.comparisonController?.abort();const controller=new AbortController();state.comparisonController=controller;$("comparison-loading").hidden=false;$("comparison-error").hidden=true;$("comparison-results").hidden=true;try{const [left,right]=await Promise.all([comparisonCompany($("compare-left").value.trim(),controller.signal),comparisonCompany($("compare-right").value.trim(),controller.signal)]);if(left.ticker===right.ticker)throw new Error("Choose two different companies.");$("compare-left").value=left.ticker;$("compare-right").value=right.ticker;renderComparison(left.data,right.data);}catch(error){if(error.name!=="AbortError"){$("comparison-error").textContent=error.message;$("comparison-error").hidden=false;}}finally{if(state.comparisonController===controller)$("comparison-loading").hidden=true;}}
 
 function setupComparisonAutocomplete(inputId,listId) {
@@ -132,7 +137,7 @@ function setupComparisonAutocomplete(inputId,listId) {
   const activate=index=>{if(!matches.length)return;active=(index+matches.length)%matches.length;list.querySelectorAll(".autocomplete-option").forEach((option,optionIndex)=>{const selected=optionIndex===active;option.classList.toggle("active",selected);option.setAttribute("aria-selected",String(selected));});const option=list.children[active];input.setAttribute("aria-activedescendant",option.id);option.scrollIntoView({block:"nearest"});};
   const select=index=>{const match=matches[index];if(!match)return;input.value=match.ticker;input.dataset.ticker=match.ticker;close();};
   const render=items=>{matches=items;active=-1;list.replaceChildren();items.forEach((match,index)=>{const option=document.createElement("li");option.id=`${listId}-option-${index}`;option.className="autocomplete-option";option.role="option";const name=document.createElement("span");name.textContent=match.name;const ticker=document.createElement("strong");ticker.textContent=match.ticker;option.append(name,ticker);option.addEventListener("mousedown",event=>{event.preventDefault();select(index);});list.append(option);});list.hidden=!items.length;input.setAttribute("aria-expanded",String(Boolean(items.length)));};
-  input.addEventListener("input",()=>{delete input.dataset.ticker;clearTimeout(timer);controller?.abort();close();const query=input.value.trim();if(query.length<2)return;timer=setTimeout(async()=>{controller=new AbortController();try{const response=await fetch(`/api/companies?q=${encodeURIComponent(query)}`,{signal:controller.signal});const items=await response.json();if(response.ok&&input.value.trim()===query)render(items);}catch(error){if(error.name!=="AbortError")close();}},220);});
+  input.addEventListener("input",()=>{delete input.dataset.ticker;clearTimeout(timer);controller?.abort();close();const query=input.value.trim();if(query.length<2)return;timer=setTimeout(async()=>{controller=new AbortController();try{const response=await fetch(`/api/companies?q=${encodeURIComponent(query)}`,{signal:controller.signal});const items=await responseJson(response,"Company search is temporarily unavailable.");if(input.value.trim()===query)render(items);}catch(error){if(error.name!=="AbortError")close();}},220);});
   input.addEventListener("keydown",event=>{if(event.key==="ArrowDown"&&matches.length){event.preventDefault();activate(active+1);}else if(event.key==="ArrowUp"&&matches.length){event.preventDefault();activate(active<0?matches.length-1:active-1);}else if(event.key==="Enter"&&matches.length){event.preventDefault();select(active<0?0:active);}else if(event.key==="Escape")close();});
   input.addEventListener("blur",()=>setTimeout(close,100));
 }
@@ -174,7 +179,7 @@ $("ticker").addEventListener("input",event=>{
   const query=input.value.trim(); if (query.length<2) { closeSuggestions(); return; }
   searchTimer=setTimeout(async()=>{
     state.searchController=new AbortController();
-    try { const response=await fetch(`/api/companies?q=${encodeURIComponent(query)}`,{signal:state.searchController.signal}); const matches=await response.json(); if(response.ok&&input.value.trim()===query) renderSuggestions(matches); }
+    try { const response=await fetch(`/api/companies?q=${encodeURIComponent(query)}`,{signal:state.searchController.signal}); const matches=await responseJson(response,"Company search is temporarily unavailable."); if(input.value.trim()===query) renderSuggestions(matches); }
     catch(error) { if(error.name!=="AbortError") closeSuggestions(); }
   },220);
 });
@@ -198,9 +203,9 @@ $("search-form").addEventListener("submit",async event=>{
   closeSuggestions();
   const controller=new AbortController(); state.searchController=controller;
   try {
-    const response=await fetch(`/api/companies?q=${encodeURIComponent(query)}`,{signal:controller.signal}), matches=await response.json();
+    const response=await fetch(`/api/companies?q=${encodeURIComponent(query)}`,{signal:controller.signal}), matches=await responseJson(response,"Company search is temporarily unavailable.");
     if(state.searchController!==controller) return;
-    const match=response.ok&&(matches.find(item=>item.ticker===query.toUpperCase())||matches[0]);
+    const match=matches.find(item=>item.ticker===query.toUpperCase())||matches[0];
     if(match) { input.value=match.ticker; input.dataset.ticker=match.ticker; loadCompany(match.ticker); }
     else { $("error").textContent=`No company found for “${query}”. Try a company name or NSE ticker.`; $("error").hidden=false; }
   } catch(error) { if(error.name!=="AbortError") { $("error").textContent="Company search is temporarily unavailable. Please try again."; $("error").hidden=false; } }
