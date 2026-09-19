@@ -32,10 +32,11 @@ def growth(current: Optional[float], previous: Optional[float]) -> Optional[floa
 
 
 def cagr(values: List[Tuple[str, Optional[float]]], years: int = 5) -> Optional[float]:
-    points = [value for _, value in values if value is not None and value > 0][-years:]
-    if len(points) < 2:
+    points = [value for _, value in values if value is not None and value > 0]
+    if len(points) < years + 1:
         return None
-    return ((points[-1] / points[0]) ** (1 / (len(points) - 1)) - 1) * 100
+    start, end = points[-(years + 1)], points[-1]
+    return ((end / start) ** (1 / years) - 1) * 100
 
 
 def percent(value: Optional[float]) -> str:
@@ -127,6 +128,7 @@ def calculate_analysis(data: Dict[str, object]) -> Dict[str, object]:
     prior_opm = latest(data, "Profit & Loss", "OPM %", 1)
     interest = latest(data, "Profit & Loss", "Interest")
     other_income = latest(data, "Profit & Loss", "Other Income")
+    prior_other_income = latest(data, "Profit & Loss", "Other Income", 1)
     pbt = latest(data, "Profit & Loss", "Profit before tax")
     eps = latest(data, "Profit & Loss", "EPS in Rs")
     prior_eps = latest(data, "Profit & Loss", "EPS in Rs", 1)
@@ -159,11 +161,23 @@ def calculate_analysis(data: Dict[str, object]) -> Dict[str, object]:
     price = summary_value(data, "Current Price")
     book_value = summary_value(data, "Book Value")
     price_to_book = divide(price, book_value)
-    peg = divide(pe, max(profit_growth or 0, 0.1))
     sales_cagr = cagr(annual_series(data, "Profit & Loss", "Sales"))
     profit_cagr = cagr(annual_series(data, "Profit & Loss", "Net Profit"))
     cfo_cagr = cagr(annual_series(data, "Cash Flows", "Cash from Operating Activity"))
+    peg = divide(pe, profit_cagr) if profit_cagr is not None and profit_cagr > 3 else None
     peer_benchmarks = calculate_peer_benchmarks(data)
+    peer_pe = next((item for item in peer_benchmarks["comparisons"] if item["key"] == "pe"), None)
+    debtor_days_change = debtor_days - prior_debtor_days if debtor_days is not None and prior_debtor_days is not None else None
+    debtor_days_change_percent = divide(debtor_days_change, abs(prior_debtor_days)) if debtor_days_change is not None else None
+    debtor_days_watch = bool(
+        debtor_days_change is not None
+        and (debtor_days_change > 7 or (debtor_days_change_percent or 0) > 0.10)
+    )
+    other_income_change = growth(other_income, prior_other_income)
+    other_income_watch = bool(
+        other_income is not None
+        and (other_income < 0 or (other_income_change is not None and abs(other_income_change) > 50))
+    )
 
     module_inputs = [
         ("Financial performance", 15, higher_is_better(sales_growth, 0, 15, 6) + higher_is_better(profit_growth, 0, 15, 6) + higher_is_better((opm or 0) - (prior_opm or opm or 0), -2, 2, 3)),
@@ -202,7 +216,10 @@ def calculate_analysis(data: Dict[str, object]) -> Dict[str, object]:
         "debt_equity": debt_equity,
         "interest_cover": interest_cover,
         "other_income_share": other_income_share,
+        "other_income_watch": other_income_watch,
         "debtor_days": debtor_days,
+        "debtor_days_change": debtor_days_change,
+        "debtor_days_watch": debtor_days_watch,
         "pe": pe,
         "peg": peg,
         "price_to_book": price_to_book,
@@ -223,34 +240,38 @@ def calculate_analysis(data: Dict[str, object]) -> Dict[str, object]:
         risks.append("Profit growth is materially ahead of operating cash growth.")
     if other_income_share > 20:
         risks.append(f"Other income contributes {other_income_share:.1f}% of pre-tax profit.")
-    if (peg or 0) > 2:
-        risks.append(f"Valuation is demanding relative to current profit growth (PEG {peg:.2f}).")
+    if peg is not None and peg > 2 and (not peer_pe or peer_pe["signal"] != "positive"):
+        risks.append(f"Valuation is demanding relative to five-year profit growth (PEG {peg:.2f}).")
+    if debtor_days_watch:
+        risks.append(f"Debtor days increased from {prior_debtor_days:.0f} to {debtor_days:.0f} days.")
+    if other_income_watch:
+        risks.append("Other income shows a material non-operating swing and requires review.")
 
     peer_strengths = [item for item in peer_benchmarks["comparisons"] if item["signal"] == "positive"]
     peer_warnings = [item for item in peer_benchmarks["comparisons"] if item["signal"] == "caution"]
 
     if total >= 80:
-        stance = "Favorable, subject to valuation discipline"
-        action = "The model supports further due diligence or phased accumulation rather than an automatic purchase."
-        wait_window = "No mandatory waiting period. Recheck after the next reported result before increasing exposure."
+        stance = "Strong financial signal"
+        action = "The reported evidence is strong; valuation and qualitative due diligence remain important monitoring areas."
+        wait_window = "Next reported result, with attention to valuation and cash conversion."
     elif total >= 65:
-        stance = "Watchlist; wait for confirmation"
-        action = "The business quality is investable enough to monitor, but the evidence is not uniformly strong enough for an unconditional entry."
-        wait_window = "Wait for the next 1-2 reported results, roughly 3-6 months, and act only if the confirmation triggers improve."
+        stance = "Mixed-positive financial signal"
+        action = "The evidence is constructive but uneven; the indicators below identify what to monitor next."
+        wait_window = "Next 1-2 reported results, roughly 3-6 months."
     elif total >= 50:
-        stance = "Cautious; defer new exposure"
-        action = "The current balance of growth, cash quality, leverage, and valuation does not provide a strong margin of safety."
-        wait_window = "Wait for at least 2 reported results, roughly 6-12 months, unless the financial triggers improve sooner."
+        stance = "Cautious financial signal"
+        action = "Growth, cash quality, leverage, or valuation indicators require closer monitoring."
+        wait_window = "Next 2 reported results, roughly 6-12 months."
     else:
-        stance = "Avoid pending material repair"
-        action = "The model does not support new exposure until operating and balance-sheet evidence changes materially."
-        wait_window = "Do not use time alone as the trigger. Reassess after 2-4 reported results and only after the stated repair conditions are met."
+        stance = "Weak financial signal"
+        action = "Several reported indicators require material improvement before the financial profile strengthens."
+        wait_window = "Next 2-4 reported results; reassess the stated repair indicators rather than time alone."
 
     confirmations = [
-        f"Sales growth should remain positive and move above 8%; latest is {percent(sales_growth)}.",
-        f"Profit growth should reach or exceed sales growth without margin deterioration; latest profit growth is {percent(profit_growth)}.",
-        f"Operating cash flow should cover at least 90% of net profit; latest coverage is {multiple(cash_conversion)}.",
-        f"Debt-to-equity should remain below 0.50x; latest is {multiple(debt_equity)}.",
+        f"{'✓ Met' if (sales_growth or 0) >= 8 else '✗ Not met'} — Sales growth target: at least 8%; latest is {percent(sales_growth)}.",
+        f"{'✓ Met' if profit_growth is not None and sales_growth is not None and profit_growth >= sales_growth and (opm or 0) >= (prior_opm or 0) else '✗ Not met'} — Profit growth should match sales growth without margin deterioration; latest is {percent(profit_growth)}.",
+        f"{'✓ Met' if (cash_conversion or 0) >= 0.9 else '✗ Not met'} — Operating cash flow target: at least 90% of net profit; latest is {multiple(cash_conversion)}.",
+        f"{'✓ Met' if debt_equity is not None and debt_equity < 0.5 else '✗ Not met'} — Debt-to-equity target: below 0.50x; latest is {multiple(debt_equity)}.",
     ]
     invalidations = [
         "Two consecutive reporting periods of declining sales or operating margin would weaken the operating thesis.",
@@ -292,14 +313,14 @@ def calculate_analysis(data: Dict[str, object]) -> Dict[str, object]:
             },
             {
                 "title": "Working capital and accounting signals",
-                "rating": "Stable" if (debtor_days or 999) <= 90 else "Watch",
+                "rating": "Watch" if debtor_days_watch else "Stable",
                 "analysis": f"Debtor days are {debtor_days:.0f} days" if debtor_days is not None else "Debtor-day data is not available.",
                 "detail": f"The prior period was {prior_debtor_days:.0f} days. Other income contributes {percent(other_income_share)} of pre-tax profit. Rising collection periods or greater dependence on non-operating income can reduce the reliability of headline earnings." if prior_debtor_days is not None else f"Other income contributes {percent(other_income_share)} of pre-tax profit.",
             },
             {
                 "title": "Valuation and expectations",
-                "rating": "Attractive" if (peg or 99) <= 1.2 else "Balanced" if (peg or 99) <= 2 else "Demanding",
-                "analysis": f"The stock trades at {multiple(pe)} earnings, {multiple(price_to_book)} book value, and a growth-adjusted PE of {multiple(peg)} using latest annual profit growth. Dividend yield is {percent(dividend_yield)}. These are context indicators, not intrinsic-value estimates; sector economics and normalized growth must be assessed before concluding that a multiple is cheap or expensive.",
+                "rating": "Not meaningful" if peg is None else "Attractive" if peg <= 1.2 else "Balanced" if peg <= 2 or (peer_pe and peer_pe["signal"] == "positive") else "Demanding",
+                "analysis": f"The stock trades at {multiple(pe)} trailing earnings and {multiple(price_to_book)} book value. Its five-year growth-adjusted P/E is {multiple(peg)}; this measure is not shown when five-year profit growth is 3% or lower. Dividend yield is {percent(dividend_yield)}. Peer valuation context is considered before describing valuation as demanding.",
             },
         ],
         "why_choose": strengths + [
@@ -327,7 +348,7 @@ def calculate_analysis(data: Dict[str, object]) -> Dict[str, object]:
         "decision": decision,
         "tone": tone,
         "modules": modules,
-        "metrics": {key: round(value, 2) if value is not None else None for key, value in metrics.items()},
+        "metrics": {key: round(value, 4) if isinstance(value, float) else value for key, value in metrics.items()},
         "strengths": strengths[:3] or ["No major model strength cleared its threshold."],
         "risks": risks[:3] or ["No major accounting warning cleared its threshold."],
         "methodology": "Rules-based accounting model; not a prediction or investment recommendation.",

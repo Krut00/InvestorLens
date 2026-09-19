@@ -3,7 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Screener-backed fundamental analysis, peer benchmarking, and source auditing for Indian listed companies.">
+  <meta property="og:title" content="InvestorLens | Screener-sourced fundamentals">
+  <meta property="og:description" content="Explore accounting trends, valuation context, direct peers, and source-audited company data.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="{{ url_for('static', filename='investorlens-card.svg', _external=True) }}">
   <title>InvestorLens | Screener-sourced fundamentals</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,600&display=swap" rel="stylesheet">
@@ -38,7 +44,7 @@
   </nav>
 
   <main>
-    <div id="loading" class="state-panel"><span class="loader"></span>Fetching current Screener data...</div>
+    <div id="loading" class="state-panel"><span class="loader"></span><span id="loading-text">Fetching current Screener data...</span></div>
     <div id="error" class="state-panel error" hidden></div>
 
     <div id="dashboard" class="view" hidden>
@@ -68,7 +74,7 @@
 
       <section class="content-section split-section">
         <div>
-          <div class="section-title"><div><p class="eyebrow">Five-year direction</p><h2>Statements in motion</h2></div></div>
+          <div class="section-title"><div><p class="eyebrow">Five-year direction · indexed to 100</p><h2>Statements in motion</h2></div></div>
           <div id="trend-chart" class="chart-panel" aria-label="Financial trend chart"></div>
           <div id="chart-legend" class="chart-legend"></div>
         </div>
@@ -115,8 +121,8 @@
       </section>
 
       <section class="verdict-band">
-        <div><p class="eyebrow">Investor stance</p><h2 id="insights-stance">--</h2><p id="insights-action"></p></div>
-        <div class="wait-card"><span>Suggested review window</span><strong id="insights-wait">--</strong></div>
+        <div><p class="eyebrow">Financial signal</p><h2 id="insights-stance">--</h2><p id="insights-action"></p></div>
+        <div class="wait-card"><span>Monitoring horizon</span><strong id="insights-wait">--</strong></div>
       </section>
 
       <section class="research-section executive-section">
@@ -139,8 +145,8 @@
       <section class="research-section thesis-section">
         <div class="research-kicker"><span>04</span><div><p class="eyebrow">Investment debate</p><h2>The case for and against</h2></div></div>
         <div class="thesis-grid">
-          <article class="thesis-panel choose"><div class="thesis-label">Why an investor may choose it</div><ul id="insights-choose"></ul></article>
-          <article class="thesis-panel avoid"><div class="thesis-label">Why an investor may defer or avoid</div><ul id="insights-avoid"></ul></article>
+          <article class="thesis-panel choose"><div class="thesis-label">Supporting evidence</div><ul id="insights-choose"></ul></article>
+          <article class="thesis-panel avoid"><div class="thesis-label">Reasons for caution</div><ul id="insights-avoid"></ul></article>
         </div>
       </section>
 

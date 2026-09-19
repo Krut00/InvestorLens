@@ -171,7 +171,7 @@ def render_analyst_pdf(report: Dict[str, object]) -> bytes:
     story.extend([meta, Spacer(1, 6 * mm)])
 
     verdict = Table([
-        [Paragraph(f"{analysis['score']}<br/><font size='7'>/ 100</font>", styles["score"]), Paragraph(f"<b>{_pdf_text(insights['stance'])}</b><br/>{_pdf_text(insights['action'])}<br/><br/><b>Review window:</b> {_pdf_text(insights['wait_window'])}<br/><b>Model confidence:</b> {_pdf_text(insights['confidence'])}", styles["body"])],
+        [Paragraph(f"{analysis['score']}<br/><font size='7'>/ 100</font>", styles["score"]), Paragraph(f"<b>{_pdf_text(insights['stance'])}</b><br/>{_pdf_text(insights['action'])}<br/><br/><b>Monitoring horizon:</b> {_pdf_text(insights['wait_window'])}<br/><b>Model confidence:</b> {_pdf_text(insights['confidence'])}", styles["body"])],
     ], colWidths=[28 * mm, 147 * mm])
     verdict.setStyle(TableStyle([("BACKGROUND", (0, 0), (0, 0), colors.HexColor("#147d59")), ("BACKGROUND", (1, 0), (1, 0), colors.HexColor("#edf3ef")), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("PADDING", (0, 0), (-1, -1), 10)]))
     story.extend([verdict, Paragraph("Executive assessment", styles["section"])])
@@ -191,13 +191,13 @@ def render_analyst_pdf(report: Dict[str, object]) -> bytes:
 
     comparison = insights["industry_comparison"]
     story.extend([PageBreak(), Paragraph("Direct peer comparison", styles["section"]), Paragraph(f"<b>Industry:</b> {_pdf_text(comparison['industry'])}<br/><b>Accounting period:</b> {_pdf_text(comparison['accounting_period'])}<br/><b>Peers included:</b> {comparison['sample_size']} · <b>Excluded without matching data:</b> {comparison['excluded_count']}<br/>{_pdf_text(comparison['methodology'])} {_pdf_text(comparison['price_basis'])}", styles["body"])])
-    peer_rows = [[Paragraph(text, styles["cell_bold"]) for text in ("Metric", "Company", "Peer median", "Difference", "Assessment")]]
+    peer_rows = [[Paragraph(text, styles["cell_bold"]) for text in ("Metric", "Company (annual period)", "Peer median (same period)", "Difference", "Assessment")]]
     peer_rows.extend([[Paragraph(_pdf_text(item["label"]), styles["cell"]), f"{item['company']}{item['unit']}", f"{item['peer_median']}{item['unit']}", f"{item['difference_percent']:+.1f}%", item["assessment"]] for item in comparison["comparisons"]])
     peer_table = Table(peer_rows, colWidths=[55 * mm, 28 * mm, 32 * mm, 28 * mm, 32 * mm], repeatRows=1)
     peer_table.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#24485b")), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white), ("GRID", (0, 0), (-1, -1), .3, colors.HexColor("#d9dfd7")), ("VALIGN", (0, 0), (-1, -1), "TOP"), ("PADDING", (0, 0), (-1, -1), 5)]))
     story.append(peer_table)
 
-    for title, items in (("Why an investor may choose it", insights["why_choose"]), ("Why an investor may defer or avoid", insights["why_not"]), ("Confirmation triggers", insights["confirmations"]), ("Thesis-break warnings", insights["invalidations"]), ("Further due diligence", insights["research_gaps"])):
+    for title, items in (("Supporting evidence", insights["why_choose"]), ("Reasons for caution", insights["why_not"]), ("Confirmation triggers", insights["confirmations"]), ("Thesis-break warnings", insights["invalidations"]), ("Further due diligence", insights["research_gaps"])):
         story.append(Paragraph(title, styles["section"]))
         for item in items:
             story.append(Paragraph(f"• {_pdf_text(item)}", styles["body"]))

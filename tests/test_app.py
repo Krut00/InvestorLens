@@ -19,6 +19,10 @@ def test_index_and_cached_company_api():
     assert 'id="comparison-form"' in index
     assert 'aria-controls="compare-left-suggestions"' in index
     assert 'aria-controls="compare-right-suggestions"' in index
+    assert 'id="loading-text"' in index
+    assert 'rel="icon"' in index
+    assert 'property="og:image"' in index
+    assert "Financial signal" in index
 
 
 def test_invalid_ticker_is_rejected():
